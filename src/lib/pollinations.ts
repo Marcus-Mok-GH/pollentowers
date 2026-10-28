@@ -1,92 +1,108 @@
 /**
- * Pollinations client.
+ * Pollinations client for Pollentowers.
  *
- * - Keyless: text generation works anonymously (rate-limited).
- * - With Pollen (BYOP): the visitor connects their own Pollen via the
- *   <polli-connect> drop-in (BRING_YOUR_OWN_POLLEN.md) or pastes an sk_ key.
- *   Their key is used for all calls, so the tower never pays for them.
+ * - Agents run as public Pollinations prompt agents (`community/...`).
+ * - Visitors pay with their own Pollen via <polli-connect> (BYOP).
+ * - The publishable App Key (pk_...) is safe to ship; sk_ tokens stay in sessionStorage.
  */
 
-const KEY_STORAGE = "pollentowers.pollen_key";
+export const APP_KEY = "pk_zVuFbawriE5hsCXK";
+
+const SESSION_KEY = "connect.apiKey";
+const FALLBACK_KEY = "pollentowers.session_key";
+
+export type AgentResult = {
+  text: string;
+  model: string;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
+};
 
 export function getKey(): string | null {
   try {
-    return localStorage.getItem(KEY_STORAGE) ?? sessionStorage.getItem("connect.apiKey");
+    return (
+      sessionStorage.getItem(SESSION_KEY) ||
+      sessionStorage.getItem(FALLBACK_KEY) ||
+      null
+    );
   } catch {
     return null;
   }
 }
 
 export function setKey(key: string | null) {
-  if (key) localStorage.setItem(KEY_STORAGE, key);
-  else localStorage.removeItem(KEY_STORAGE);
+  try {
+    if (key) sessionStorage.setItem(FALLBACK_KEY, key);
+    else {
+      sessionStorage.removeItem(FALLBACK_KEY);
+      sessionStorage.removeItem(SESSION_KEY);
+    }
+  } catch {
+    /* ignore */
+  }
 }
 
-export async function runAgentJob(opts: { system: string; user: string }): Promise<{ text: string }> {
+export async function runAgentJob(opts: {
+  agentModel: string;
+  user: string;
+  revisionNote?: string;
+}): Promise<AgentResult> {
   const key = getKey();
-  const model = "openai/gpt-5.4-nano";
-
-  if (key) {
-    const res = await fetch("https://gen.pollinations.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: opts.system },
-          { role: "user", content: opts.user },
-        ],
-      }),
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`Pollinations ${res.status}: ${body.slice(0, 200)}`);
-    }
-    const data = await res.json();
-    const text = data?.choices?.[0]?.message?.content;
-    if (!text) throw new Error("Empty response from Pollinations");
-    return { text };
-  }
-
-  // Anonymous — the classic endpoint (text.pollinations.ai) answers keyless,
-  // so the agent desk works before anyone connects Pollen. Free tier allows
-  // one reply every 30 seconds per IP.
-  const res = await fetch("https://text.pollinations.ai/", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "openai-fast",
-      messages: [
-        { role: "system", content: opts.system },
-        { role: "user", content: opts.user },
-      ],
-    }),
-  });
-  if (res.status === 402) {
+  if (!key) {
     throw new Error(
-      "Free tier: one reply every 30 seconds per IP. Wait a moment and run it again — or connect a Pollen key at the top of the page to lift the limit.",
+      "Connect your own Pollen first (top of page). Agent jobs are billed to your balance.",
     );
   }
+
+  const messages: { role: string; content: string }[] = [
+    { role: "user", content: opts.user },
+  ];
+  if (opts.revisionNote?.trim()) {
+    messages.push({
+      role: "user",
+      content: `Owner revision note — rewrite the draft accordingly:\n${opts.revisionNote.trim()}`,
+    });
+  }
+
+  const res = await fetch("https://gen.pollinations.ai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model: opts.agentModel,
+      messages,
+    }),
+  });
+
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Pollinations ${res.status}: ${body.slice(0, 200)}`);
+    throw new Error(`Pollinations ${res.status}: ${body.slice(0, 280)}`);
   }
-  const text = (await res.text()).trim();
-  if (!text) throw new Error("Empty response from Pollinations");
-  return { text };
+
+  const data = await res.json();
+  const text = data?.choices?.[0]?.message?.content;
+  if (!text) throw new Error("Empty response from Pollinations agent");
+  return {
+    text,
+    model: data?.model ?? opts.agentModel,
+    usage: data?.usage,
+  };
 }
 
-
-/** Floor-sign image generation — costs Pollen, so it needs a connected key. */
 export async function renderSign(prompt: string): Promise<string> {
   const key = getKey();
-  if (!key) throw new Error("Connect your own Pollen first (top of page) to mint images.");
+  if (!key) throw new Error("Connect your own Pollen first to mint images.");
   const res = await fetch("https://gen.pollinations.ai/v1/images/generations", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${key}`,
+    },
     body: JSON.stringify({
       prompt,
       model: "black-forest-labs/flux.1-schnell",
@@ -96,7 +112,7 @@ export async function renderSign(prompt: string): Promise<string> {
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Pollinations ${res.status}: ${body.slice(0, 200)}`);
+    throw new Error(`Pollinations ${res.status}: ${body.slice(0, 280)}`);
   }
   const data = await res.json();
   const url = data?.data?.[0]?.url;

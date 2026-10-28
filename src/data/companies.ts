@@ -10,24 +10,27 @@ export type Company = {
   rentPricePollen: number;
   dailyJob: string;
   decision: string;
-  agentPrompt: string;
+  agentModel: string;
+  agentTitle: string;
+  vacant?: boolean;
 };
 
-/** Floor 12 is the leasing office (no agent). Floor 1 is the lobby. */
+/** Every occupied floor maps to a public Pollinations prompt agent. */
 export const COMPANIES: Company[] = [
   {
     slug: "lobby",
     floor: 1,
-    name: "Lobby & Leasing",
-    sector: "Open",
+    name: "Lobby & Concierge",
+    sector: "Building",
     tagline: "Welcome desk of Pollentowers.",
     owner: "Building",
-    occupants: 0,
+    occupants: 1,
     color: "#8b93a7",
     rentPricePollen: 0,
-    dailyJob: "",
-    decision: "",
-    agentPrompt: "",
+    dailyJob: "Guide a visitor to the right floor",
+    decision: "Send them to a specialist floor, or keep them in the lobby?",
+    agentModel: "community/Marcus-Mok-GH/pt-lobby",
+    agentTitle: "Lobby Concierge",
   },
   {
     slug: "northwind-analytics",
@@ -41,8 +44,8 @@ export const COMPANIES: Company[] = [
     rentPricePollen: 12,
     dailyJob: "Watch overnight client metrics and draft the morning anomaly brief",
     decision: "Flag a specific metric anomaly as critical, or archive the brief silently?",
-    agentPrompt:
-      "You are the research analyst agent of Northwind Analytics. Produce a concise morning brief: 3 notable movements in client metrics, one risk, one recommendation. Plain text, no preamble.",
+    agentModel: "community/Marcus-Mok-GH/pt-northwind",
+    agentTitle: "Northwind Analyst",
   },
   {
     slug: "emberforge",
@@ -56,8 +59,8 @@ export const COMPANIES: Company[] = [
     rentPricePollen: 12,
     dailyJob: "Generate three logo directions for a fictional coffee brand, then pick one",
     decision: "Ship the picked direction to the client, or keep iterating another round?",
-    agentPrompt:
-      "You are the creative director agent of Emberforge Studio. Describe three distinct logo directions for a fictional specialty coffee brand (concept, colours, type feel), then pick the strongest and justify it in two sentences. Plain text.",
+    agentModel: "community/Marcus-Mok-GH/pt-emberforge",
+    agentTitle: "Emberforge Creative Director",
   },
   {
     slug: "quietloop-legal",
@@ -71,8 +74,8 @@ export const COMPANIES: Company[] = [
     rentPricePollen: 15,
     dailyJob: "Summarise the riskiest clauses in one inbound vendor contract",
     decision: "Escalate clause 7.3 to the client, or accept it with a note?",
-    agentPrompt:
-      "You are the contract-review agent of Quietloop Legal. List the three riskiest clauses a vendor contract could contain in this order: indemnity, auto-renewal, data retention — one line each on why, and a suggested redline. Plain text.",
+    agentModel: "community/Marcus-Mok-GH/pt-quietloop",
+    agentTitle: "Quietloop Contract Reviewer",
   },
   {
     slug: "tidepool-commerce",
@@ -86,8 +89,8 @@ export const COMPANIES: Company[] = [
     rentPricePollen: 12,
     dailyJob: "Re-price the top 10 SKUs against competitor listings",
     decision: "Match the competitor price on SKU-14, or hold margin?",
-    agentPrompt:
-      "You are the pricing agent of Tidepool Commerce. Given a fictional top-10 SKU list, propose price moves for 3 of them with a one-line rationale each, holding margin where possible. Plain text.",
+    agentModel: "community/Marcus-Mok-GH/pt-tidepool",
+    agentTitle: "Tidepool Pricing Agent",
   },
   {
     slug: "lantern-media",
@@ -101,23 +104,23 @@ export const COMPANIES: Company[] = [
     rentPricePollen: 15,
     dailyJob: "Draft this week's newsletter and pick the subject line",
     decision: "Publish under the risky subject line, or the safe one?",
-    agentPrompt:
-      "You are the writing agent of Lantern Media. Draft a 120-word newsletter about one honest AI trend, then offer two subject lines: safe and risky, and recommend one. Plain text.",
+    agentModel: "community/Marcus-Mok-GH/pt-lantern",
+    agentTitle: "Lantern Media Writer",
   },
   {
     slug: "harbor-health",
     floor: 7,
     name: "Harbor Health Co.",
     sector: "Wellness ops",
-    tagline: "#17999 came true — one owner, many agents, a tower.",
+    tagline: "One owner, many agents, a tower — quest #17999.",
     owner: "Ines",
     occupants: 3,
     color: "#60a5fa",
     rentPricePollen: 15,
-    dailyJob: "Triage inbound member questions into a triage list with priority flags",
+    dailyJob: "Triage inbound member questions into a list with priority flags",
     decision: "Auto-respond to the two urgent cases, or wait for review?",
-    agentPrompt:
-      "You are the triage agent of Harbor Health Co. Sort these fictional member questions (headache after new medication, billing confusion, appointment reschedule) into urgency tiers with one-line handling notes. Say 17999 is this tower's origin issue. Plain text.",
+    agentModel: "community/Marcus-Mok-GH/pt-harbor",
+    agentTitle: "Harbor Health Triage",
   },
   {
     slug: "available-floor",
@@ -131,7 +134,9 @@ export const COMPANIES: Company[] = [
     rentPricePollen: 12,
     dailyJob: "",
     decision: "",
-    agentPrompt: "",
+    agentModel: "",
+    agentTitle: "",
+    vacant: true,
   },
   {
     slug: "copperline-finance",
@@ -145,8 +150,8 @@ export const COMPANIES: Company[] = [
     rentPricePollen: 18,
     dailyJob: "Reconcile the week's expenses and flag anything odd",
     decision: "Approve the odd 340 Pollen charge, or query it with the vendor?",
-    agentPrompt:
-      "You are the bookkeeping agent of Copperline Finance. Reconcile a fictional expense list (hosting 120, ads 340, freelancer 900), flag the most suspicious transaction, and draft a short query to the vendor. Plain text.",
+    agentModel: "community/Marcus-Mok-GH/pt-copperline",
+    agentTitle: "Copperline Bookkeeper",
   },
   {
     slug: "orbit-recruiting",
@@ -160,8 +165,8 @@ export const COMPANIES: Company[] = [
     rentPricePollen: 15,
     dailyJob: "Score today's applicants against the role brief",
     decision: "Fast-track the top scorer, or value the unconventional applicant?",
-    agentPrompt:
-      "You are the screening agent of Orbit Recruiting. Score two fictional applicants (one perfect-on-paper, one career-changer) against a role brief, then recommend which to interview and why. Plain text.",
+    agentModel: "community/Marcus-Mok-GH/pt-orbit",
+    agentTitle: "Orbit Recruiter",
   },
   {
     slug: "fieldnote-research",
@@ -175,24 +180,27 @@ export const COMPANIES: Company[] = [
     rentPricePollen: 12,
     dailyJob: "Monitor competitor launches and summarise overnight moves",
     decision: "Publish the competitor teardown, or hold it for clients only?",
-    agentPrompt:
-      "You are the research agent of Fieldnote Research. Summarise a fictional overnight competitor launch as: what they shipped, why it matters, and one opportunity for clients — three short paragraphs. Plain text.",
+    agentModel: "community/Marcus-Mok-GH/pt-fieldnote",
+    agentTitle: "Fieldnote Researcher",
   },
   {
     slug: "leasing-office",
     floor: 12,
     name: "Leasing Office",
-    sector: "Open",
+    sector: "Building",
     tagline: "Rooftop office. The best view in the building.",
-    owner: "Leasing office",
-    occupants: 0,
-    color: "#8b93a7",
+    owner: "Landlord",
+    occupants: 1,
+    color: "#94a3b8",
     rentPricePollen: 20,
-    dailyJob: "",
-    decision: "",
-    agentPrompt: "",
+    dailyJob: "Review the latest floor-rental application",
+    decision: "Approve, waitlist, or decline the applicant?",
+    agentModel: "community/Marcus-Mok-GH/pt-leasing",
+    agentTitle: "Leasing Officer",
   },
 ];
+
+export const LEASING_AGENT = "community/Marcus-Mok-GH/pt-leasing";
 
 export const byFloor = (floor: number) =>
   COMPANIES.find((c) => c.floor === floor) ?? COMPANIES[0];

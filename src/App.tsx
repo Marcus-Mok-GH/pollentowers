@@ -2,33 +2,61 @@ import { useEffect, useState } from "react";
 import TowerScene from "./tower/TowerScene";
 import Directory from "./views/Directory";
 import Office from "./views/Office";
+import InboxView from "./views/Inbox";
 import { bySlug } from "./data/companies";
-import { getKey, setKey } from "./lib/pollinations";
+import { APP_KEY, getKey, setKey } from "./lib/pollinations";
+import { loadInbox } from "./lib/inbox";
 
-type View = { name: "tower" } | { name: "directory" } | { name: "office"; slug: string };
+type View =
+  | { name: "tower" }
+  | { name: "directory" }
+  | { name: "office"; slug: string }
+  | { name: "inbox" };
 
 export default function App() {
   const [view, setView] = useState<View>({ name: "tower" });
   const [apiKey, setApiKey] = useState<string | null>(getKey());
-  const [keyDraft, setKeyDraft] = useState("");
+  const [waiting, setWaiting] = useState(
+    () => loadInbox().filter((i) => i.status === "waiting").length,
+  );
 
   useEffect(() => {
-    const el = document.querySelector("polli-connect") as (HTMLElement & {
-      addEventListener(t: string, cb: () => void): void;
-    }) | null;
+    const el = document.querySelector("polli-connect") as
+      | (HTMLElement & {
+          apiKey?: string | null;
+          addEventListener(t: string, cb: () => void): void;
+          removeEventListener(t: string, cb: () => void): void;
+        })
+      | null;
     if (!el) return;
-    const onChange = () => setApiKey(getKey());
+    const onChange = () => {
+      const key = el.apiKey ?? getKey();
+      if (key) setKey(key);
+      setApiKey(key);
+    };
     el.addEventListener("change", onChange);
+    onChange();
     return () => el.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    const sync = () =>
+      setWaiting(loadInbox().filter((i) => i.status === "waiting").length);
+    window.addEventListener("pollentowers-inbox", sync);
+    return () => window.removeEventListener("pollentowers-inbox", sync);
   }, []);
 
   return (
     <div className="app">
-      <header>
-        <div className="brand" onClick={() => setView({ name: "tower" })}>
-          <span className="logo" style={{ background: "#22d3ee" }} />
-          Pollen<b>towers</b>
-          <span className="muted small"> — a tower of AI-run companies</span>
+      <header className="topbar">
+        <div className="brand" onClick={() => setView({ name: "tower" })} role="button">
+          <span className="logo">◈</span>
+          <div>
+            <div>
+              Pollen<b>towers</b>
+            </div>
+            <div className="muted small">a tower of AI-run companies</div>
+          </div>
         </div>
         <nav className="tabs">
           <button
@@ -43,55 +71,35 @@ export default function App() {
           >
             Directory
           </button>
+          <button
+            className={view.name === "inbox" ? "active" : ""}
+            onClick={() => setView({ name: "inbox" })}
+          >
+            Decisions{waiting > 0 ? ` (${waiting})` : ""}
+          </button>
         </nav>
         <div className="pollen">
-          {/* BYOP drop-in: works once App Key pk_... is set via VITE_POLLINATIONS_APP_KEY.
-              Until then, paste an sk_ key from enter.pollinations.ai/keys */}
-          {(import.meta as any).env?.VITE_POLLINATIONS_APP_KEY && (
-            /* @ts-expect-error custom element */
-            <polli-connect
-              app-key={(import.meta as any).env.VITE_POLLINATIONS_APP_KEY}
-              budget="10"
-              expiry="7"
-            />
-          )}
-          <span className="muted small">{apiKey ? "🌿 Pollen connected" : "🌥️ keyless"}</span>
-          {!apiKey && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (keyDraft.trim()) {
-                  setKey(keyDraft.trim());
-                  setApiKey(keyDraft.trim());
-                  setKeyDraft("");
-                }
-              }}
-            >
-              <input
-                value={keyDraft}
-                onChange={(e) => setKeyDraft(e.target.value)}
-                placeholder="Paste your sk_ Pollen key"
-                type="password"
-              />
-              <button type="submit">Connect</button>
-            </form>
-          )}
-          {apiKey && (
-            <button className="ghost" onClick={() => { setKey(null); setApiKey(null); }}>
-              Disconnect
-            </button>
-          )}
+          {/* @ts-expect-error custom element from @pollinations/ui */}
+          <polli-connect
+            app-key={APP_KEY}
+            budget="10"
+            expiry="7"
+            models="text,image,community/Marcus-Mok-GH/pt-lobby,community/Marcus-Mok-GH/pt-northwind,community/Marcus-Mok-GH/pt-emberforge,community/Marcus-Mok-GH/pt-quietloop,community/Marcus-Mok-GH/pt-tidepool,community/Marcus-Mok-GH/pt-lantern,community/Marcus-Mok-GH/pt-harbor,community/Marcus-Mok-GH/pt-copperline,community/Marcus-Mok-GH/pt-orbit,community/Marcus-Mok-GH/pt-fieldnote,community/Marcus-Mok-GH/pt-leasing"
+          />
+          <span className={`pill ${apiKey ? "on" : ""}`}>
+            {apiKey ? "Pollen connected" : "Connect Pollen to run agents"}
+          </span>
         </div>
       </header>
 
       <main>
         {view.name === "tower" && (
           <div className="tower-wrap">
-            <div className="tower-hint">Drag to orbit · scroll to zoom · click a floor to step inside</div>
+            <div className="tower-hint">
+              Drag to orbit · scroll to zoom · use the elevator or click a floor
+            </div>
             <TowerScene
-              onEnterFloor={(slug) => {
-                setView({ name: "office", slug });
-              }}
+              onEnterFloor={(slug) => setView({ name: "office", slug })}
               showDirectory={() => setView({ name: "directory" })}
             />
           </div>
@@ -101,18 +109,24 @@ export default function App() {
         )}
         {view.name === "office" && (
           <Office
-            company={
-              bySlug(view.slug) ??
-              bySlug("lobby")!
-            }
+            company={bySlug(view.slug) ?? bySlug("lobby")!}
             onBack={() => setView({ name: "tower" })}
+            onOpenInbox={() => setView({ name: "inbox" })}
           />
+        )}
+        {view.name === "inbox" && (
+          <InboxView onOpen={(slug) => setView({ name: "office", slug })} />
         )}
       </main>
 
       <footer className="muted small">
-        Built on Pollinations (quest #17999) · agents run on your own Pollen ·{" "}
-        <a href="https://github.com/pollinations/pollinations/issues/17999">quest origin</a>
+        Built for{" "}
+        <a href="https://github.com/pollinations/pollinations/issues/17999">
+          Pollinations quest #17999
+        </a>{" "}
+        · agents run on{" "}
+        <a href="https://pollinations.ai/?ref=badge">pollinations.ai</a> · visitors pay with
+        their own Pollen
       </footer>
     </div>
   );

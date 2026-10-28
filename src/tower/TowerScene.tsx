@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, Html, Text } from "@react-three/drei";
 import * as THREE from "three";
@@ -37,8 +37,7 @@ function Floor({
     mat.emissive.lerp(emissive, 0.15);
   });
 
-  // Lobby floor is wider, floors shrink slightly towards the top.
-  const w = company.sector === "Open" ? TOWER_W + 1.4 : TOWER_W - index * 0.12;
+  const w = company.vacant || company.sector === "Building" ? TOWER_W + 0.8 : TOWER_W - index * 0.1;
 
   return (
     <group position={[0, index * FLOOR_H + FLOOR_H / 2, 0]}>
@@ -66,10 +65,13 @@ function Floor({
           metalness={0.12}
         />
       </mesh>
-      {/* window strip */}
       <mesh position={[0, 0.1, w / 2 + 0.011]} onClick={handleClick}>
         <planeGeometry args={[w * 0.82, FLOOR_H * 0.34]} />
-        <meshStandardMaterial color={company.color} emissive={company.color} emissiveIntensity={0.8} />
+        <meshStandardMaterial
+          color={company.color}
+          emissive={company.color}
+          emissiveIntensity={0.8}
+        />
       </mesh>
       <Html position={[w / 2 + 0.15, 0, 0]} center distanceFactor={9} zIndexRange={[10, 0]}>
         <div
@@ -93,6 +95,21 @@ function Floor({
   );
 }
 
+function ElevatorCab({ floorIndex }: { floorIndex: number }) {
+  const ref = useRef<THREE.Mesh>(null);
+  const targetY = floorIndex * FLOOR_H + FLOOR_H / 2;
+  useFrame((_, dt) => {
+    if (!ref.current) return;
+    ref.current.position.y = THREE.MathUtils.damp(ref.current.position.y, targetY, 4, dt);
+  });
+  return (
+    <mesh ref={ref} position={[-(TOWER_W / 2 + 0.55), FLOOR_H / 2, 0]}>
+      <boxGeometry args={[0.55, 1.1, 0.55]} />
+      <meshStandardMaterial color="#6ee7ff" emissive="#6ee7ff" emissiveIntensity={1.4} />
+    </mesh>
+  );
+}
+
 function Tower({
   selectedSlug,
   onSelect,
@@ -100,30 +117,36 @@ function Tower({
   selectedSlug: string;
   onSelect: (slug: string) => void;
 }) {
+  const ordered = useMemo(
+    () => COMPANIES.slice().sort((a, b) => a.floor - b.floor),
+    [],
+  );
+  const selectedIndex = Math.max(
+    0,
+    ordered.findIndex((c) => c.slug === selectedSlug),
+  );
+
   return (
     <>
       <ambientLight intensity={1.0} />
       <directionalLight position={[8, 14, 6]} intensity={2.0} castShadow />
       <directionalLight position={[-9, 6, -8]} intensity={0.9} color="#7c9dff" />
       <pointLight position={[-6, 4, -6]} intensity={0.6} color="#6ee7ff" />
-      {/* ground */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
         <circleGeometry args={[13, 48]} />
         <meshStandardMaterial color="#0b0f1a" roughness={0.9} />
       </mesh>
       <gridHelper args={[26, 26, "#1e2a44", "#131a2c"]} position={[0, 0, 0]} />
-      {COMPANIES.slice()
-        .sort((a, b) => a.floor - b.floor)
-        .map((c, i) => (
-          <Floor
-            key={c.slug}
-            index={i}
-            company={c}
-            selected={c.slug === selectedSlug}
-            onSelect={() => onSelect(c.slug)}
-          />
-        ))}
-      {/* antenna */}
+      {ordered.map((c, i) => (
+        <Floor
+          key={c.slug}
+          index={i}
+          company={c}
+          selected={c.slug === selectedSlug}
+          onSelect={() => onSelect(c.slug)}
+        />
+      ))}
+      <ElevatorCab floorIndex={selectedIndex} />
       <mesh position={[0, COMPANIES.length * FLOOR_H + 0.8, 0]}>
         <cylinderGeometry args={[0.05, 0.12, 1.6, 8]} />
         <meshStandardMaterial color="#6ee7ff" emissive="#6ee7ff" emissiveIntensity={1} />
@@ -143,7 +166,7 @@ function Tower({
         maxDistance={40}
         maxPolarAngle={Math.PI / 2.05}
         autoRotate
-        autoRotateSpeed={0.4}
+        autoRotateSpeed={0.35}
         target={[0, (COMPANIES.length * FLOOR_H) / 2, 0]}
       />
     </>
@@ -158,24 +181,45 @@ export default function TowerScene({
   showDirectory?: () => void;
 }) {
   const [selectedSlug, setSelectedSlug] = useState("lobby");
+  const ordered = COMPANIES.slice().sort((a, b) => a.floor - b.floor);
+
+  function select(slug: string, enter = true) {
+    setSelectedSlug(slug);
+    if (!enter) return;
+    if (slug === "lobby") showDirectory?.();
+    else onEnterFloor(slug);
+  }
 
   return (
-    <Canvas
-      camera={{ position: [15, 13, 17], fov: 50 }}
-      shadows
-      style={{ width: "100%", height: "100%" }}
-      onPointerMissed={() => undefined}
-    >
-      <color attach="background" args={["#070a12"]} />
-      <fog attach="fog" args={["#070a12", 22, 46]} />
-      <Tower
-        selectedSlug={selectedSlug}
-        onSelect={(slug) => {
-          setSelectedSlug(slug);
-          if (slug !== "lobby") onEnterFloor(slug);
-          else showDirectory?.();
-        }}
-      />
-    </Canvas>
+    <div className="tower-stage">
+      <aside className="elevator" aria-label="Elevator">
+        <div className="elevator-title">Elevator</div>
+        {ordered
+          .slice()
+          .reverse()
+          .map((c) => (
+            <button
+              key={c.slug}
+              className={c.slug === selectedSlug ? "active" : ""}
+              style={{ borderColor: c.color }}
+              onClick={() => select(c.slug, true)}
+              title={c.name}
+            >
+              <span style={{ color: c.color }}>{c.floor}</span>
+              <span className="elev-name">{c.name}</span>
+            </button>
+          ))}
+      </aside>
+      <Canvas
+        camera={{ position: [15, 13, 17], fov: 50 }}
+        shadows
+        style={{ width: "100%", height: "100%" }}
+        onPointerMissed={() => undefined}
+      >
+        <color attach="background" args={["#070a12"]} />
+        <fog attach="fog" args={["#070a12", 22, 46]} />
+        <Tower selectedSlug={selectedSlug} onSelect={(slug) => select(slug, true)} />
+      </Canvas>
+    </div>
   );
 }

@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "owner": "Marcus-Mok-GH",
+  "baseModel": "openai/gpt-5.4-nano",
+  "quest": "#17999",
+  "agents": [
+    {
+      "name": "pt-lobby",
+      "title": "Lobby Concierge",
+      "model": "community/Marcus-Mok-GH/pt-lobby",
+      "floor": 1,
+      "visibility": "public",
+      "type": "prompt_agent"
+    },
+    {
+      "name": "pt-northwind",
+      "title": "Northwind Analyst",
+      "model": "community/Marcus-Mok-GH/pt-northwind",
+      "floor": 2,
+      "visibility": "public",
+      "type": "prompt_agent"
+    },
+    {
+      "name": "pt-emberforge",
+      "title": "Emberforge Creative Director",
+      "model": "community/Marcus-Mok-GH/pt-emberforge",
+      "floor": 3,
+      "visibility": "public",
+      "type": "prompt_agent"
+    },
+    {
+      "name": "pt-quietloop",
+      "title": "Quietloop Contract Reviewer",
+      "model": "community/Marcus-Mok-GH/pt-quietloop",
+      "floor": 4,
+      "visibility": "public",
+      "type": "prompt_agent"
+    },
+    {
+      "name": "pt-tidepool",
+      "title": "Tidepool Pricing Agent",
+      "model": "community/Marcus-Mok-GH/pt-tidepool",
+      "floor": 5,
+      "visibility": "public",
+      "type": "prompt_agent"
+    },
+    {
+      "name": "pt-lantern",
+      "title": "Lantern Media Writer",
+      "model": "community/Marcus-Mok-GH/pt-lantern",
+      "floor": 6,
+      "visibility": "public",
+      "type": "prompt_agent"
+    },
+    {
+      "name": "pt-harbor",
+      "title": "Harbor Health Triage",
+      "model": "community/Marcus-Mok-GH/pt-harbor",
+      "floor": 7,
+      "visibility": "public",
+      "type": "prompt_agent"
+    },
+    {
+      "name": "pt-copperline",
+      "title": "Copperline Bookkeeper",
+      "model": "community/Marcus-Mok-GH/pt-copperline",
+      "floor": 9,
+      "visibility": "public",
+      "type": "prompt_agent"
+    },
+    {
+      "name": "pt-orbit",
+      "title": "Orbit Recruiter",
+      "model": "community/Marcus-Mok-GH/pt-orbit",
+      "floor": 10,
+      "visibility": "public",
+      "type": "prompt_agent"
+    },
+    {
+      "name": "pt-fieldnote",
+      "title": "Fieldnote Researcher",
+      "model": "community/Marcus-Mok-GH/pt-fieldnote",
+      "floor": 11,
+      "visibility": "public",
+      "type": "prompt_agent"
+    },
+    {
+      "name": "pt-leasing",
+      "title": "Leasing Officer",
+      "model": "community/Marcus-Mok-GH/pt-leasing",
+      "floor": 12,
+      "visibility": "public",
+      "type": "prompt_agent"
+    }
+  ]
+}
